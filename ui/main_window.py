@@ -155,6 +155,7 @@ class MainWindow(QMainWindow):
         self.active_thread_id: str = self.threads[0]["id"]
 
         self.worker: Optional[GroqStreamWorker] = None
+        self._workers: List[GroqStreamWorker] = []
         self.image_worker: Optional[OpenRouterImageWorker] = None
 
         self.setWindowTitle(self.translator.t("app_title"))
@@ -437,6 +438,8 @@ class MainWindow(QMainWindow):
         fallback_model = self.settings.get("fallback_model", "openai/gpt-4o-mini")
         if fallback_provider == "openrouter":
             fallback_model = self.settings.get("fallback_model") or self.settings.get("openrouter_model", "openai/gpt-4o-mini")
+        elif fallback_model not in AVAILABLE_MODELS:
+            fallback_model = "llama-3.3-70b-versatile"
 
         api_key = self.settings.get("api_key", "").strip()
         base_url = self.settings.get("base_url", "https://api.groq.com/openai/v1")
@@ -452,7 +455,7 @@ class MainWindow(QMainWindow):
                 return
             api_key = openrouter_key
             base_url = "https://openrouter.ai/api/v1"
-            model = "openai/gpt-4o-mini"
+            model = self.settings.get("openrouter_model", "openai/gpt-4o-mini").strip()
             fallback_key = ""
             fallback_model = ""
             primary_label = "OpenRouter"
@@ -469,9 +472,12 @@ class MainWindow(QMainWindow):
             fallback_label=fallback_provider,
             primary_label=primary_label,
         )
+        worker = self.worker
+        self._workers.append(worker)
         self.worker.chunk_received.connect(self.chat_widget.append_assistant_delta)
-        self.worker.finished.connect(self._on_generation_finished)
+        self.worker.response_finished.connect(self._on_generation_finished)
         self.worker.error.connect(self._on_generation_error)
+        self.worker.finished.connect(lambda: self._on_worker_thread_finished(worker))
         self.worker.start()
 
     def _on_generation_finished(self, full_text: str) -> None:
@@ -480,11 +486,14 @@ class MainWindow(QMainWindow):
         if thread is not None:
             thread["messages"].append({"role": "assistant", "content": full_text})
             self._persist()
-        self.worker = None
 
     def _on_generation_error(self, message: str) -> None:
         self.chat_widget.show_error_message(message)
-        self.worker = None
+
+    def _on_worker_thread_finished(self, worker: GroqStreamWorker) -> None:
+        self._workers = [active for active in self._workers if active is not worker]
+        if self.worker is worker:
+            self.worker = None
 
     def _stop_generation_if_running(self) -> None:
         if self.worker is not None and self.worker.isRunning():

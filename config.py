@@ -60,6 +60,7 @@ DEFAULT_OPENROUTER_MODEL = os.getenv(
     "OPENROUTER_MODEL", "openai/gpt-4o-mini").strip()
 DEFAULT_FALLBACK_PROVIDER = os.getenv("FALLBACK_PROVIDER", "openrouter").strip()
 DEFAULT_FALLBACK_MODEL = os.getenv("FALLBACK_MODEL", "openai/gpt-4o-mini").strip()
+DEFAULT_OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 AVAILABLE_MODELS = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
@@ -101,6 +102,7 @@ def load_settings() -> Dict[str, Any]:
         "openrouter_model": DEFAULT_OPENROUTER_MODEL,
         "fallback_provider": DEFAULT_FALLBACK_PROVIDER,
         "fallback_model": DEFAULT_FALLBACK_MODEL,
+        "OPENROUTER_api_key": DEFAULT_OPENROUTER_API_KEY,
 
     
         "language": DEFAULT_APP_LANGUAGE if DEFAULT_APP_LANGUAGE in SUPPORTED_LANGUAGES else "en",
